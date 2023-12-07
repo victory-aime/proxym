@@ -11,6 +11,9 @@ import {
   useBreakpointValue,
   IconProps,
   Icon,
+  FormControl,
+  FormHelperText,
+  FormErrorMessage,
   InputGroup,
   InputRightElement,
 } from "@chakra-ui/react";
@@ -18,8 +21,6 @@ import { useState } from "react";
 import { ViewIcon, ViewOffIcon } from "@chakra-ui/icons";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import { Formik, Form, Field } from "formik";
-import LoginSchema from "../validators/LoginSchema";
 
 const Blur = (props: IconProps) => {
   return (
@@ -44,27 +45,28 @@ const Blur = (props: IconProps) => {
 };
 
 export default function Login() {
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [username, setUsername] = useState(""); // Added username state
-  const [password, setPassword] = useState(""); // Added password state
-  const isDisabled = !username || !password; // Check isDisabled based on both username and password
+  const [isLoading, setIsLoading] = useState(false);
+  const isDisabled = !username || !password;
 
   const handleTogglePassword = () => {
     setShowPassword((prevShowPassword) => !prevShowPassword);
   };
 
-  const handleSubmit = async (values, { setSubmitting }) => {
+  const handleSubmit = async (e: any) => {
+    e.preventDefault();
+
     try {
+      setIsLoading(true);
+
       const response = await fetch("http://localhost:3001/auth/login", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          id: "1",
-          username: values.username,
-          password: values.password,
-        }),
+        body: JSON.stringify({ id: "1", username, password }),
       });
 
       if (response.ok) {
@@ -73,21 +75,23 @@ export default function Login() {
 
         localStorage.setItem("token", data.access_token);
         localStorage.setItem("username", data.username);
+        toast.success("Login successful!");
       } else {
         const errorData = await response.json();
         console.error("Erreur de l'API:", errorData);
-        // Utilisez les informations d'erreur pour afficher un message à l'utilisateur
+        toast.error("Login failed. Please check your credentials.");
       }
     } catch (error) {
+      toast.error("An error occurred. Please try again later.");
       console.error("Erreur lors de la requête:", error);
-      // Gérez les erreurs ici
     } finally {
-      setSubmitting(false); // Indiquez à Formik que la soumission est terminée
+      setIsLoading(false);
     }
   };
 
   return (
     <Box>
+      <ToastContainer />
       <Box position="relative">
         <Container
           as={SimpleGrid}
@@ -136,82 +140,69 @@ export default function Login() {
               </Heading>
             </Stack>
             <Box mt={10}>
-              <Formik
-                initialValues={{
-                  username: "",
-                  password: "",
-                }}
-                onSubmit={handleSubmit}
-                validationSchema={LoginSchema}
-              >
-                {({ handleChange, handleSubmit, values, errors, touched }) => (
-                  <Form>
-                    <Stack spacing={4}>
-                      <label>Username :</label>
-                      <Input
-                        placeholder="username"
-                        bg={"gray.100"}
-                        border={0}
-                        color={"gray.500"}
-                        _placeholder={{
-                          color: "gray.500",
-                        }}
-                        value={values.username}
-                        onChange={(e) => setUsername(e.target.value)}
-                      />
-                      {touched.username && errors.username && (
-                        <Text>{errors.username}</Text>
-                      )}
-                      <label>Password :</label>
+              <FormControl>
+                <Stack spacing={4}>
+                  <label>Username :</label>
+                  <Input
+                    placeholder="username"
+                    bg={"gray.100"}
+                    border={0}
+                    color={"gray.500"}
+                    _placeholder={{
+                      color: "gray.500",
+                    }}
+                    value={username || ""}
+                    onChange={(e) => setUsername(e.target.value)}
+                  />
 
-                      <InputGroup size="md">
-                        <Input
-                          type={showPassword ? "text" : "password"}
-                          placeholder="Password"
-                          bg={"gray.100"}
-                          border={0}
-                          color={"gray.500"}
-                          _placeholder={{
-                            color: "gray.500",
-                          }}
-                          value={values.password}
-                          onChange={handleChange}
-                          aria-label={
-                            showPassword ? "Hide password" : "Show password"
-                          }
-                        />
-                        <InputRightElement width="4.5rem">
-                          <Button
-                            h="1.75rem"
-                            size="sm"
-                            onClick={handleTogglePassword}
-                          >
-                            {showPassword ? <ViewOffIcon /> : <ViewIcon />}
-                          </Button>
-                        </InputRightElement>
-                      </InputGroup>
-                    </Stack>
+                  <label>Password :</label>
 
-                    <Button
-                      fontFamily={"heading"}
-                      mt={8}
-                      w={"full"}
-                      bgGradient="linear(to-r, red.400,pink.400)"
-                      color={"white"}
-                      _hover={{
-                        bgGradient: "linear(to-r, red.400,pink.400)",
-                        boxShadow: "xl",
+                  <InputGroup size="md">
+                    <Input
+                      type={showPassword ? "text" : "password"}
+                      placeholder="Password"
+                      bg={"gray.100"}
+                      border={0}
+                      color={"gray.500"}
+                      _placeholder={{
+                        color: "gray.500",
                       }}
-                      type="submit"
-                      onClick={handleSubmit}
-                      isLoading={false}
-                      isDisabled={isDisabled}
-                    >
-                      Submit
-                    </Button>
-                  </Form>
-                )}
-              </Formik>
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      aria-label={
+                        showPassword ? "Hide password" : "Show password"
+                      }
+                    />
+                    <InputRightElement width="4.5rem">
+                      <Button
+                        h="1.75rem"
+                        size="sm"
+                        onClick={handleTogglePassword}
+                      >
+                        {showPassword ? <ViewOffIcon /> : <ViewIcon />}
+                      </Button>
+                    </InputRightElement>
+                  </InputGroup>
+                </Stack>
+
+                <Button
+                  fontFamily={"heading"}
+                  mt={8}
+                  w={"full"}
+                  bgGradient="linear(to-r, red.400,pink.400)"
+                  color={"white"}
+                  _hover={{
+                    bgGradient: "linear(to-r, red.400,pink.400)",
+                    boxShadow: "xl",
+                  }}
+                  type="submit"
+                  onClick={handleSubmit}
+                  isLoading={isLoading}
+                  isDisabled={isDisabled}
+                >
+                  Submit
+                </Button>
+              </FormControl>
             </Box>
             <Blur
               position={"absolute"}
